@@ -112,6 +112,7 @@ svg text{font-family:inherit}
 .bar-in{fill:var(--bar-ink);font-size:11px;font-weight:600}
 .bar-val{paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
 .seg-in{fill:#13222E;font-size:10.5px;font-weight:600}
+.seg-in.seg-small{font-size:8.5px;font-weight:650}
 .stk .seg{cursor:pointer;transition:opacity .2s}.stk.hl .seg:not(.on){opacity:.18}.stk .seg.on rect{stroke:var(--ink);stroke-width:1.5}
 .stkleg span{cursor:pointer;border-radius:4px;padding:1px 4px;margin:0 -4px}.stkleg span.on{background:var(--hover);color:var(--ink)}.seg-in.dk{fill:#fff}
 :root[data-theme="dark"] .seg-in.dk{fill:#13222E}
@@ -1047,7 +1048,7 @@ function peopleCard(host, n){
       kids.forEach((c,j)=>{ const [a,p] = c.m.att[i]; if(!a) return; const y1 = y(acc+a), h = y(acc)-y1;
         const sg = S('g',{class:'seg','data-c':j},g);
         S('rect',{x:cx-bw/2,y:y1,width:bw,height:Math.max(.5,h-1.5),fill:kidColor(n,c,j),opacity:cur?1:.85,class:'gcol',style:`--i:${i}`},sg);
-        if(h>=13){ const tx = S('text',{x:cx,y:y1+h/2+3.5,'text-anchor':'middle',class:'seg-in'+(light(j)?' dk':'')},sg); tx.textContent = nf.format(a); }
+        if(h>=9){ const small = h<13; const tx = S('text',{x:cx,y:y1+h/2+(small?2.8:3.5),'text-anchor':'middle',class:'seg-in'+(small?' seg-small':'')+(light(j)?' dk':'')},sg); tx.textContent = nf.format(a); }
         else { const tx = S('text',{x:cx+bw/2+4,y:y1+h/2+4,class:'seg-out'},sg); tx.textContent = nf.format(a); }   // тонкий слой: цифра сбоку, видна при подсветке
         sg.addEventListener('pointerenter', ()=>hl(j));
         sg.addEventListener('pointermove', ev=>{ ev.stopPropagation(); showTip(ev, tp=>{ tp.append(el('div','tt',`${nm(c)} · ${qLabel(q)}`)); tipRow(tp, kidColor(n,c,j), nf.format(a), loc('peopleTotal')==='total'?'attended':'пришли', p>0?`${pct(a/p)} · ${nf.format(a)} ${loc('of')} ${nf.format(p)}`:null); if(c.children.length || true) tp.append(el('div','tsub',loc('clickOpen'))); }); });
