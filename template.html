@@ -304,7 +304,7 @@ text.grp-t{font-size:12px;font-weight:600;fill:var(--muted)}
 .credits-divider{height:1px;background:#38536a;margin:0 0 17px}
 .credits-author{margin:0;color:#fff;font-weight:500}
 .credits-quote{margin:9px 0 0;color:#b7c9d5;font-style:italic}
-.credits-wolf{text-align:right;color:#c5aa78;font-style:italic;font-size:11px;letter-spacing:.05em;margin-top:19px}
+.credits-tardis{display:flex;justify-content:flex-end;margin-top:13px;color:#c5aa78}.credits-tardis svg{display:block;width:25px;height:38px;flex:none}
 .credits-close{position:absolute;top:14px;right:14px;background:transparent;border:0;color:#b7c9d5;font-size:21px;cursor:pointer;padding:2px 8px}
 .credits-close:focus-visible{outline:2px solid #c5aa78}
 @media print{.report-version,.credits-backdrop{display:none!important}}
@@ -1805,7 +1805,14 @@ creditsOverlay.innerHTML = `<section class="credits-panel" role="dialog" aria-mo
   <div class="credits-divider"></div>
   <p class="credits-author" data-credit="author"></p>
   <p class="credits-quote">It's bigger on the inside.</p>
-  <div class="credits-wolf">BAD WOLF</div>
+  <div class="credits-tardis" aria-hidden="true"><svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M16 6V3h8v3M13 9h14v4H13zM9 13h22v43H9zM6 56h28v3H6z" stroke-width="2"/>
+  <path d="M7 10h26v4H7z" fill="currentColor"/>
+  <path d="M11 16h18M20 17v38M12 30h7v12h-7zM21 30h7v12h-7z" stroke-width="1.4"/>
+  <path d="M13 31h5v10h-5zM22 31h5v10h-5z" fill="currentColor" opacity=".55" stroke="none"/>
+  <path d="M13 18h14v8H13z" stroke-width="1"/><path d="M15 20h10M15 22h10" stroke-width=".8"/>
+  <circle cx="17" cy="48" r=".9" fill="currentColor" stroke="none"/>
+</svg></div>
 </section>`;
 document.body.append(creditsOverlay);
 creditsOverlay.querySelector('.credits-close').addEventListener('click',closeHiddenCredits);
