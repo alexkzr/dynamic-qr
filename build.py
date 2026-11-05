@@ -19,6 +19,8 @@ r"""
 Требуется: pip install openpyxl   (для пароля ещё: pip install cryptography)
 """
 import sys, re, json, os, glob
+import tempfile
+import xml.etree.ElementTree as ET
 try:
     import openpyxl
 except ImportError:
@@ -55,13 +57,15 @@ NEED_SHEETS = {'Moscow Stake', 'St.Petersburg Stake', 'Moscow Mission', 'S&I Sum
 
 
 def sheet_names(path):
-    """Названия листов без загрузки всей книги: читаем только оглавление внутри файла."""
+    """Читаем названия листов из OOXML с поддержкой XML entities и namespace."""
     import zipfile
     try:
         with zipfile.ZipFile(path) as z:
-            xml = z.read('xl/workbook.xml').decode('utf-8', 'ignore')
-        return set(re.findall(r'<sheet[^>]*\sname="([^"]+)"', xml))
-    except Exception:
+            root = ET.fromstring(z.read('xl/workbook.xml'))
+        namespace = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
+        return {sheet.attrib['name'] for sheet in root.iter(namespace + 'sheet')
+                if 'name' in sheet.attrib}
+    except (OSError, KeyError, ET.ParseError, zipfile.BadZipFile):
         return set()
 
 
@@ -71,7 +75,7 @@ def pick_workbook(files):
     ours = lambda f: os.path.basename(f).lower().startswith('eurasian_area_report')
     skipped = []
     for f in sorted(files, key=lambda f: (not ours(f), -os.path.getmtime(f))):
-        missing = NEED_SHEETS - {n.replace('&amp;', '&') for n in sheet_names(f)}
+        missing = NEED_SHEETS - sheet_names(f)
         if not missing:
             for sk in skipped:
                 print(f'Пропускаю «{os.path.basename(sk)}» — это не книга статистики (нет нужных листов).')
@@ -615,6 +619,28 @@ document.body.classList.add('locked');
 tpl_b64 = base64.b64encode(tpl.encode('utf-8')).decode()
 
 
+def atomic_write_text(path, content):
+    """Не трогаем прежний файл, пока новый не записан и не синхронизирован."""
+    folder = os.path.dirname(os.path.abspath(path))
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', newline='',
+                                         dir=folder, prefix='.report-', suffix='.tmp',
+                                         delete=False) as out:
+            tmp = out.name
+            out.write(content)
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(tmp, path)
+        tmp = None
+    finally:
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
+
+
 def write_page(path, data, with_export):
     """Страница = шаблон + данные. С паролем данные шифруются целиком (см. ниже)."""
     html = tpl.replace('/*__TPL__*/""', json.dumps(tpl_b64) if with_export else '""', 1)
@@ -633,7 +659,7 @@ def write_page(path, data, with_export):
         enc = json.dumps({'s': b64(salt), 'iv': b64(iv), 'it': ITER, 'ct': b64(ct)})
         html = html.replace('/*__DATA__*/null', 'window.__DATA__', 1)
         html = html.replace('<script id="main">', LOCK_HTML.replace('/*__ENC__*/null', enc) + '<script id="main" type="text/x-locked">', 1)
-    open(path, 'w', encoding='utf-8').write(html)
+    atomic_write_text(path, html)
 
 
 write_page(OUT, payload, True)
