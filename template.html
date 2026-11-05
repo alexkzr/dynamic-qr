@@ -264,6 +264,8 @@ h4.chk-h{font-size:14px;margin:14px 0 2px}
 @media print{ .godist,.mgrp{display:none!important} }
 .sortbar{display:inline-flex;gap:2px;background:var(--surface-2);border-radius:999px;padding:3px;margin:0 0 10px}
 .sortbar button{border:0;background:transparent;border-radius:999px;padding:4px 12px;font-size:13px;color:var(--ink-2);cursor:pointer}
+.sortbar .cmp-privacy{margin-left:10px;border:1px solid var(--axis);background:var(--surface);font-weight:600}
+.sortbar .cmp-privacy[aria-pressed="true"]{background:var(--surface-2)}
 .sortbar button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,25,45,.12)}
 text.grp-t{font-size:12px;font-weight:600;fill:var(--muted)}
 .chk-empty{font-size:15px;color:var(--muted);margin:10px 0 4px}
@@ -843,11 +845,13 @@ function notesPanel(n){
    По проценту честный рейтинг только у групп от 10 человек; маленькие группы идут после,
    а «пришло больше, чем в списках» — отдельной группой внизу (столбик обрезан на 100%, штриховка). */
 let CMP_SORT = 'pct';
+let CMP_SOLO = false; // режим беседы: только текущее подразделение (без изменения исходных данных)
 function barChart(host, n, k, hl){
   host.replaceChildren();
   const EN = LANG==='en', i = state.q;
   const src = FLAT(n) ? n.children.flatMap(c=>c.type==='округ' ? c.children : [c]) : n.children;   // миссия: все приходы, включая приходы округов
-  const rows = src.filter(c=>!c.empty).map(c=>({c, v:val(c,k,i), ap:ap(c,k,i)}));
+  const solo = !!hl && !hl.children.length && CMP_SOLO;
+  const rows = src.filter(c=>!c.empty && (!solo || c.id===hl.id)).map(c=>({c, v:val(c,k,i), ap:ap(c,k,i)}));
   const withV = rows.filter(r=>r.v!=null), noV = rows.filter(r=>r.v==null);
   const over = r => r.ap[0] > r.ap[1];   // пришло больше, чем в списке — любое превышение
   const small = r => r.ap[1] < SMALL;
@@ -872,6 +876,13 @@ function barChart(host, n, k, hl){
     b.addEventListener('click', ()=>{ if(CMP_SORT===key) return; CMP_SORT = key; hideTip(); barChart(host, n, k, hl); });
     bar.append(b);
   });
+  if(hl && !hl.children.length){
+    const toggle = el('button', null, CMP_SOLO ? (EN?'Show all':'Показать все') : (EN?'Hide others':'Скрыть остальные'));
+    toggle.type = 'button'; toggle.className = 'cmp-privacy';
+    toggle.setAttribute('aria-pressed', String(CMP_SOLO));
+    toggle.addEventListener('click', ()=>{ CMP_SOLO = !CMP_SOLO; hideTip(); render(); });
+    bar.append(toggle);
+  }
   host.append(bar);
 
   const pv = val(n,k,i);
@@ -884,7 +895,7 @@ function barChart(host, n, k, hl){
   const R = 12 + Math.max(40, ...withV.map(r=>_ctx.measureText(label(r)+peopleTxt(r)).width));
   const rowH = narrow ? 50 : 32, T = 8, B = 8, GH = 30;
   const nRows = groups.reduce((s,g)=>s+g[1].length,0), nHead = groups.filter(g=>g[0]).length;
-  const showAvg = !byN && pv!=null;
+  const showAvg = !solo && !byN && pv!=null;
   const H = T + B + nRows*rowH + nHead*GH + (showAvg?18:0);
   const ranked = groups[0][1];
   const max = byN ? Math.max(1, ...withV.map(r=>r.ap[0])) : niceMax(Math.max(0.05, pv||0, ...ranked.map(r=>r.v), ...withV.filter(r=>!over(r)).map(r=>r.v)));
@@ -1279,11 +1290,11 @@ function render(){
     const kc = pool.some(x=>has(x,k)) ? k : 'att';
     const owner = kids.length ? n : up, hl = kids.length ? null : n;   // у прихода: все приходы родителя, текущий выделен
     const s3 = el('section','compare'); s3.id = 'compare';
-    s3.append(el('h2',null, kids.length ? `${loc('compareH')}: ${childWord(n)}` : `${loc('compareH')}: ${nm(n)} ${LANG==='en'?'and other units of':'и другие'} ${LANG==='en'?nm(up):childWord(up)+' · '+nm(up)}`));
+    s3.append(el('h2',null, !kids.length && CMP_SOLO ? (LANG==='en' ? `Individual discussion: ${nm(n)}` : `Индивидуальная беседа: ${nm(n)}`) : kids.length ? `${loc('compareH')}: ${childWord(n)}` : `${loc('compareH')}: ${nm(n)} ${LANG==='en'?'and other units of':'и другие'} ${LANG==='en'?nm(up):childWord(up)+' · '+nm(up)}`));
     const chips = el('div','chips');
     Object.keys(M).filter(kk=>has(n,kk) && pool.some(c=>has(c,kk))).forEach(kk=>{ const b = el('button',null,M[kk].short); b.type='button'; b.setAttribute('aria-pressed', kk===kc); b.title = M[kk].name; b.addEventListener('click',()=>go({m:kk}, true)); chips.append(b); });
     const cc = el('div','card'); cc.append(el('h3',null,`${M[kc].name} · ${qLabel(QN[i])}`),
-      el('p','cnote', hl ? (LANG==='en' ? `${nm(n)} is highlighted; the line is the average for ${nm(up)}. ${cap(loc('clickOpen'))}.` : `${nm(n)} выделен, линия — среднее: ${nm(up)}. ${cap(loc('clickOpen'))}.`) : loc('cmpNote')));
+      el('p','cnote', hl && CMP_SOLO ? (LANG==='en' ? 'Only the selected unit is shown.' : 'Показаны данные только выбранного подразделения.') : hl ? (LANG==='en' ? `${nm(n)} is highlighted; the line is the average for ${nm(up)}. ${cap(loc('clickOpen'))}.` : `${nm(n)} выделен, линия — среднее: ${nm(up)}. ${cap(loc('clickOpen'))}.`) : loc('cmpNote')));
     const hb = el('div','chart'); cc.append(hb);
     const cf = el('div','card'); cf.append(el('h3',null,LANG==='en'?'People behind this percentage':'Люди за этим процентом'),
       el('p','cnote', LANG==='en' ? `${nm(n)}. If the percentage changed but attendance did not, the potential changed.` : `${nm(n)}. Если процент изменился, а ${M[kc].fact} — нет, значит изменилось количество ${baseOf(kc)}.`));
