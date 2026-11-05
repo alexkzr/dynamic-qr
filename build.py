@@ -12,7 +12,8 @@ r"""
     возьмёт самый свежий .xlsm из папки уровнем выше и положит отчёт туда же.
 Можно явно:  python3 build.py "путь\к\файлу.xlsm" "путь\к\отчёту.html"
 
-С паролем:   python3 build.py --password "ваш-пароль"      (или коротко: -pwd "ваш-пароль")
+С паролем:   python3 build.py --ask-password   (без отображения и истории команд)
+    Старый вариант --password "пароль" сохранён, но небезопасен.
     данные общего отчёта по региону шифруются (AES-256), файл открывается только после ввода пароля.
     Отдельные отчёты кольев, миссий и округов из кнопки «Выгрузить» паролем не защищаются.
 
@@ -20,25 +21,54 @@ r"""
 """
 import sys, re, json, os, glob
 import tempfile
+import hashlib
+import getpass
+import datetime
+from datetime import timezone
+
+BUILD_VERSION = "1.1.0"
 import xml.etree.ElementTree as ET
 try:
     import openpyxl
 except ImportError:
     sys.exit('Не установлен openpyxl. Выполните один раз:\n    python3 -m pip install openpyxl\nи запустите скрипт снова.')
 
-# ---- флаг пароля: вынимаем его из аргументов, остальное разбирается как раньше ----
+# --ask-password запрашивает секрет через getpass, не помещая его в командную строку.
+# Старые флаги оставлены для совместимости; они небезопасны из-за истории команд.
 PASSWORD = None
 _rest, _it = [], iter(sys.argv[1:])
+_password_mode = None
 for _a in _it:
-    if _a in ('--password', '-pwd', '--pwd', '-p'):
+    if _a == '--ask-password':
+        if _password_mode:
+            sys.exit('Укажите только один способ передачи пароля.')
+        _password_mode = 'prompt'
+    elif _a in ('--password', '-pwd', '--pwd', '-p'):
+        if _password_mode:
+            sys.exit('Укажите только один способ передачи пароля.')
+        _password_mode = 'legacy'
         PASSWORD = next(_it, None)
         if not PASSWORD:
-            sys.exit('После --password укажите пароль, например:\n    python3 build.py --password "Тихий-Кедр-47"')
+            sys.exit('После --password укажите пароль или используйте безопасный --ask-password.')
     elif _a.startswith('--password='):
+        if _password_mode:
+            sys.exit('Укажите только один способ передачи пароля.')
+        _password_mode = 'legacy'
         PASSWORD = _a.split('=', 1)[1]
+        if not PASSWORD:
+            sys.exit('Пароль не может быть пустым.')
     else:
         _rest.append(_a)
 sys.argv = [sys.argv[0]] + _rest
+if _password_mode == 'prompt':
+    try:
+        PASSWORD = getpass.getpass('Пароль для шифрования отчёта: ')
+    except (EOFError, KeyboardInterrupt):
+        sys.exit('\nВвод пароля отменён.')
+    if not PASSWORD:
+        sys.exit('Пароль не может быть пустым.')
+elif _password_mode == 'legacy':
+    print('ПРЕДУПРЕЖДЕНИЕ: пароль в аргументах команды может сохраниться в истории и списке процессов. Используйте --ask-password.', file=sys.stderr)
 if PASSWORD is not None:
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -563,7 +593,52 @@ payload = dict(quarters=QS, tree=area, excelFlags=flags, excelHeader=report_quar
                source=os.path.basename(SRC), notes=notes, logo=logo,
                built=datetime.date.today().strftime('%d.%m.%Y'))
 
-tpl = open(os.path.join(HERE, 'template.html'), encoding='utf-8').read()
+TEMPLATE_PATH = os.path.join(HERE, 'template.html')
+tpl = open(TEMPLATE_PATH, encoding='utf-8').read()
+
+
+def require_marker(template, marker, count=1):
+    actual = template.count(marker)
+    if actual != count:
+        sys.exit(f'Ошибка шаблона: маркер {marker!r} найден {actual} раз(а), ожидается {count}. '
+                 'Проверьте template.html; прежние отчёты не изменены.')
+
+
+# Маркеры также встречаются как строковые литералы в JS экспорте.
+# Проверяем именно места вставки, а не все текстовые упоминания.
+require_marker(tpl, 'const TPL_B64 = /*__TPL__*/"";')
+require_marker(tpl, 'const DATA = /*__DATA__*/null;')
+require_marker(tpl, '<script id="main">')
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            h.update(block)
+    return h.hexdigest()
+
+
+BUILD_META = {
+    'version': BUILD_VERSION,
+    'built_utc': datetime.datetime.now(timezone.utc).isoformat(timespec='seconds'),
+    'generator_sha256': sha256_file(os.path.abspath(__file__)),
+    'template_sha256': sha256_file(TEMPLATE_PATH),
+    'workbook_sha256': sha256_file(SRC),
+}
+
+
+def embed_build_meta(html):
+    # Не включаем имя файла, локальный путь или пароль в итоговый отчёт.
+    # Хеши относятся к входным файлам, а не к самому HTML.
+    marker = '</head>'
+    if html.count(marker) != 1:
+        sys.exit('Ошибка шаблона: ожидался ровно один </head>. Прежние отчёты не изменены.')
+    import html as html_lib
+    tags = ''.join('\n<meta name="report-' + key.replace('_', '-') + '" content="' +
+                   html_lib.escape(str(value), quote=True) + '">' for key, value in BUILD_META.items())
+    return html.replace(marker, tags + '\n' + marker, 1)
+
 # шаблон кладём внутрь страницы (base64), чтобы кнопка «Выгрузить» могла собрать отчёты подразделений
 LOCK_HTML = r'''<div id="lock" role="dialog" aria-labelledby="lock-t">
   <form id="lock-f" autocomplete="off">
@@ -659,7 +734,7 @@ def write_page(path, data, with_export):
         enc = json.dumps({'s': b64(salt), 'iv': b64(iv), 'it': ITER, 'ct': b64(ct)})
         html = html.replace('/*__DATA__*/null', 'window.__DATA__', 1)
         html = html.replace('<script id="main">', LOCK_HTML.replace('/*__ENC__*/null', enc) + '<script id="main" type="text/x-locked">', 1)
-    atomic_write_text(path, html)
+    atomic_write_text(path, embed_build_meta(html))
 
 
 write_page(OUT, payload, True)
