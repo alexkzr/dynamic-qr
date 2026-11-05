@@ -1290,7 +1290,7 @@ function render(){
     const kc = pool.some(x=>has(x,k)) ? k : 'att';
     const owner = kids.length ? n : up, hl = kids.length ? null : n;   // у прихода: все приходы родителя, текущий выделен
     const s3 = el('section','compare'); s3.id = 'compare';
-    s3.append(el('h2',null, !kids.length && CMP_SOLO ? (LANG==='en' ? `Individual discussion: ${nm(n)}` : `Индивидуальная беседа: ${nm(n)}`) : kids.length ? `${loc('compareH')}: ${childWord(n)}` : `${loc('compareH')}: ${nm(n)} ${LANG==='en'?'and other units of':'и другие'} ${LANG==='en'?nm(up):childWord(up)+' · '+nm(up)}`));
+    s3.append(el('h2',null, !kids.length && CMP_SOLO ? nm(n) : kids.length ? `${loc('compareH')}: ${childWord(n)}` : `${loc('compareH')}: ${nm(n)} ${LANG==='en'?'and other units of':'и другие'} ${LANG==='en'?nm(up):childWord(up)+' · '+nm(up)}`));
     const chips = el('div','chips');
     Object.keys(M).filter(kk=>has(n,kk) && pool.some(c=>has(c,kk))).forEach(kk=>{ const b = el('button',null,M[kk].short); b.type='button'; b.setAttribute('aria-pressed', kk===kc); b.title = M[kk].name; b.addEventListener('click',()=>go({m:kk}, true)); chips.append(b); });
     const cc = el('div','card'); cc.append(el('h3',null,`${M[kc].name} · ${qLabel(QN[i])}`),
@@ -1518,20 +1518,30 @@ function buildScoped(u){
   const stub = {id:'__parent', name:parent.name, en:parent.en, type:parent.type, m:parent.m, stub:true, empty:false, children:[cleanNode(u)]};
   let top = u; while(top.parent && top.parent.parent) top = top.parent;
   const baked = {}, bakedCl = {}, keep = state.q;
-  QN.forEach((q,i)=>{
-    state.q = i;
-    baked[q] = issuesFor(u).map(x=>{ const o = Object.assign({}, x); o.node = x.node.id; return o; });
-    const cl = {}; if(i>0) subtree(u).forEach(x=>{ const v = cleanupNote(x,i); if(v) cl[x.id] = v; });
-    bakedCl[q] = cl;
-  });
-  state.q = keep;
-  return Object.assign({}, DATA, {
+  try {
+    QN.forEach((q,i)=>{
+      state.q = i;
+      baked[q] = issuesFor(u).map(x=>{ const o = Object.assign({}, x); o.node = x.node.id; return o; });
+      const cl = {}; if(i>0) subtree(u).forEach(x=>{ const v = cleanupNote(x,i); if(v) cl[x.id] = v; });
+      bakedCl[q] = cl;
+    });
+  } finally {
+    state.q = keep;
+  }
+  // Explicit allowlist: NEVER clone the full regional DATA into a unit report.
+  // Parent aggregate m is retained intentionally for parent-level averages.
+  return {
+    quarters: DATA.quarters,
     tree: stub,
-    excelFlags: DATA.excelFlags.filter(f=>ids.has(f.node)),
-    notes: (DATA.notes||[]).filter(x=>ids.has(x.node)),        // только пояснения по этому подразделению и его приходам
+    excelFlags: (DATA.excelFlags||[]).filter(f=>ids.has(f.node)),
+    notes: (DATA.notes||[]).filter(x=>ids.has(x.node)),
+    source: DATA.source,
+    logo: DATA.logo,
+    built: DATA.built,
     scope: {unit:u.id, slot: UNIT_SLOT.get(top)},
-    baked, bakedCl,
-  });
+    baked,
+    bakedCl,
+  };
 }
 function scopedHTML(u){
   const tpl = new TextDecoder().decode(Uint8Array.from(atob(TPL_B64), c=>c.charCodeAt(0)));
