@@ -291,6 +291,24 @@ text.grp-t{font-size:12px;font-weight:600;fill:var(--muted)}
 .brandfoot img.plate{background:#fff;padding:6px;border-radius:6px}
 .foot{font-size:13px;color:var(--muted);line-height:1.55;margin:0}
 
+
+/* Hidden About: isolated presentation, no dependency on report data. */
+.report-version{align-self:flex-start;background:#10283c;color:#fff;border:0;border-radius:5px;padding:5px 9px;font:inherit;font-size:12px;cursor:default;user-select:none}
+.report-version:focus-visible{outline:2px solid #c5aa78;outline-offset:3px}
+.credits-backdrop[hidden]{display:none!important}
+.credits-backdrop{position:fixed;inset:0;z-index:200;background:rgba(4,16,28,.72);display:flex;align-items:center;justify-content:center;padding:18px}
+.credits-panel{position:relative;width:min(100%,430px);background:#10283c;color:#fff;border:1px solid #38536a;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.35);padding:26px;font-size:14px;line-height:1.6}
+.credits-label{color:#c5aa78;font-size:11px;letter-spacing:.1em;font-weight:650}
+.credits-title{font-size:19px;line-height:1.35;font-weight:650;margin:16px 0 2px}
+.credits-sub{color:#b7c9d5;margin:0 0 18px}
+.credits-divider{height:1px;background:#38536a;margin:0 0 17px}
+.credits-author{margin:0;color:#fff;font-weight:500}
+.credits-quote{margin:9px 0 0;color:#b7c9d5;font-style:italic}
+.credits-wolf{text-align:right;color:#c5aa78;font-style:italic;font-size:11px;letter-spacing:.05em;margin-top:19px}
+.credits-close{position:absolute;top:14px;right:14px;background:transparent;border:0;color:#b7c9d5;font-size:21px;cursor:pointer;padding:2px 8px}
+.credits-close:focus-visible{outline:2px solid #c5aa78}
+@media print{.report-version,.credits-backdrop{display:none!important}}
+
 /* подсказка */
 #tip{position:fixed;z-index:80;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:9px 11px;font-size:13.5px;min-width:150px;max-width:300px;display:none}
 #tip .tt{font-size:12.5px;color:var(--ink-2);margin-bottom:4px}
@@ -312,11 +330,11 @@ text.grp-t{font-size:12px;font-weight:600;fill:var(--muted)}
 .hm-leg{display:inline-flex;align-items:center;gap:8px}
 .hm-leg i{display:inline-block;width:150px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--hm-lo),color-mix(in srgb,var(--hm-lo) 12%,var(--surface)) 42%,var(--surface-2) 50%,color-mix(in srgb,var(--hm-hi) 12%,var(--surface)) 58%,var(--hm-hi))}
 .dscroll{overflow:auto;padding:0 22px 22px;flex:1}
-table.hm{border-collapse:separate;border-spacing:3px;font-size:14px}
-table.hm th{position:sticky;top:0;background:var(--surface);z-index:2;font-size:12px;text-align:center;padding:8px 2px;border:0;min-width:62px}
-table.hm th:first-child{text-align:left;left:0;z-index:3;min-width:210px}
-table.hm td{text-align:center;padding:10px 4px;border:0;border-radius:6px;font-weight:600;position:static}
-table.hm td:first-child{text-align:left;font-weight:500;position:sticky;left:0;background:var(--surface);z-index:1;border-radius:0;white-space:normal;padding-left:0}
+table.hm{border-collapse:separate;border-spacing:2px;font-size:clamp(11px,1vw,14px);width:100%;table-layout:fixed}
+table.hm th{position:sticky;top:0;background:var(--surface);z-index:2;font-size:clamp(9px,.85vw,12px);text-align:center;padding:8px 1px;border:0;min-width:0;overflow-wrap:anywhere;hyphens:auto;line-height:1.2}
+table.hm th:first-child{text-align:left;left:0;z-index:3;width:clamp(150px,18%,210px);min-width:0}
+table.hm td{text-align:center;padding:10px 1px;border:0;border-radius:6px;font-weight:600;position:static}
+table.hm td:first-child{overflow-wrap:anywhere;text-align:left;font-weight:500;position:sticky;left:0;background:var(--surface);z-index:1;border-radius:0;white-space:normal;padding-left:0}
 table.hm td.hi{color:var(--hm-ink)}
 table.hm td.sm{color:var(--muted);font-weight:400;background:repeating-linear-gradient(135deg,var(--surface-2) 0 4px,transparent 4px 8px)}
 table.hm td.na{color:var(--muted);font-weight:400}
@@ -325,6 +343,7 @@ table.hm tr.r{cursor:pointer}table.hm tr.r:hover td:first-child{color:var(--link
 table.hm .arw{font-size:10px;margin-left:3px;opacity:.85}
 .drawer.open table.hm td{animation:cellIn .4s var(--ease) both;animation-delay:calc(var(--r,0)*35ms + var(--c,0)*10ms + .15s)}
 @keyframes cellIn{from{opacity:0;scale:.94}}
+@media (max-width:850px){table.hm{width:max-content;min-width:100%;table-layout:auto;font-size:13px}table.hm th{min-width:60px;font-size:11px}table.hm th:first-child{min-width:175px;width:175px}table.hm td{padding:10px 3px}}
 .hm-note{font-size:13px;color:var(--muted);margin:10px 0 0;max-width:80em}
 
 @media (max-width:980px){
@@ -1356,6 +1375,13 @@ function render(){
   const foot = el('p','foot');
   foot.append(document.createTextNode(loc('built').replace('{d}', DATA.built||'').replace('{src}', DATA.source)));
   fc.append(foot);
+  // The generator embeds the actual build version as a meta tag.
+  const version = document.querySelector('meta[name="report-version"]')?.content || '1.1.0';
+  const versionButton = el('button','report-version','v'+version.replace(/^v/i,''));
+  versionButton.type = 'button';
+  versionButton.setAttribute('aria-label', EN ? 'Report version' : 'Версия отчёта');
+  versionButton.addEventListener('dblclick', openHiddenCredits);
+  fc.append(versionButton);
   bf.append(fc); app.append(bf);
 
   draw.forEach(f=>f());
@@ -1748,6 +1774,49 @@ function renderCheck(){
   }
   app.append(b2);
 }
+
+/* ---------- Hidden About (independent of chart and export logic) ---------- */
+let creditsReturnFocus = null;
+function openHiddenCredits(){
+  const overlay = document.getElementById('hidden-credits');
+  creditsReturnFocus = document.activeElement;
+  const en = LANG === 'en';
+  overlay.querySelector('[data-credit="label"]').textContent = en ? 'ABOUT THIS PROJECT' : 'О ПРОЕКТЕ';
+  overlay.querySelector('[data-credit="title"]').textContent = en ? "Yes, there's an Easter egg." : 'Да, здесь есть пасхалка.';
+  overlay.querySelector('[data-credit="subtitle"]').textContent = en ? "No, it doesn't affect the numbers." : 'Нет, на статистику она не влияет.';
+  overlay.querySelector('[data-credit="author"]').textContent = en ? 'This report was created by Alexander Kozyrev.' : 'Этот отчёт создан Александром Козыревым.';
+  overlay.querySelector('.credits-close').setAttribute('aria-label',en?'Close':'Закрыть');
+  overlay.hidden = false;
+  overlay.querySelector('.credits-close').focus();
+}
+function closeHiddenCredits(){
+  const overlay = document.getElementById('hidden-credits');
+  if(overlay.hidden) return;
+  overlay.hidden = true;
+  if(creditsReturnFocus && creditsReturnFocus.isConnected) creditsReturnFocus.focus();
+}
+const creditsOverlay = document.createElement('div');
+creditsOverlay.id='hidden-credits'; creditsOverlay.className='credits-backdrop'; creditsOverlay.hidden=true;
+creditsOverlay.innerHTML = `<section class="credits-panel" role="dialog" aria-modal="true" aria-labelledby="credits-title">
+  <button class="credits-close" type="button" aria-label="Закрыть">×</button>
+  <div class="credits-label" data-credit="label"></div>
+  <h2 class="credits-title" id="credits-title" data-credit="title"></h2>
+  <p class="credits-sub" data-credit="subtitle"></p>
+  <div class="credits-divider"></div>
+  <p class="credits-author" data-credit="author"></p>
+  <p class="credits-quote">It's bigger on the inside.</p>
+  <div class="credits-wolf">BAD WOLF</div>
+</section>`;
+document.body.append(creditsOverlay);
+creditsOverlay.querySelector('.credits-close').addEventListener('click',closeHiddenCredits);
+creditsOverlay.addEventListener('click',e=>{if(e.target===creditsOverlay)closeHiddenCredits();});
+document.addEventListener('keydown',e=>{
+  if(creditsOverlay.hidden)return;
+  if(e.key==='Escape'){e.preventDefault();closeHiddenCredits();}
+  if(e.key==='Tab'){
+    e.preventDefault();creditsOverlay.querySelector('.credits-close').focus();
+  }
+});
 
 /* ---------- запуск ---------- */
 const qs = document.getElementById('q');
